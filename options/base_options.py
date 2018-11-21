@@ -21,13 +21,22 @@ class BaseOptions():
         self.parser.add_argument('--data_type', default=32, type=int, choices=[8, 16, 32], help="Supported data type i.e. 8, 16, 32 bit")
         self.parser.add_argument('--verbose', action='store_true', default=False, help='toggles verbose')
 
-        # input/output sizes       
+        # input/output sizes
         self.parser.add_argument('--batchSize', type=int, default=1, help='input batch size')
         self.parser.add_argument('--loadSize', type=int, default=1024, help='scale images to this size')
         self.parser.add_argument('--fineSize', type=int, default=512, help='then crop to this size')
         self.parser.add_argument('--label_nc', type=int, default=35, help='# of input label channels')
         self.parser.add_argument('--input_nc', type=int, default=3, help='# of input image channels')
         self.parser.add_argument('--output_nc', type=int, default=3, help='# of output image channels')
+
+        # video specifics
+        self.parser.add_argument('--video_mode', action='store_true', default=False, help='toggles video mode / frame dataset')
+        self.parser.add_argument('--scheduled_sampling', action='store_true', default=False, help='activate scheduled sampling inspired training')
+        self.parser.add_argument('--ss_recursion_prob', type=float, default=0.2, help='probability, at a given step, to use the previous step\'s generated frame as input image')
+        self.parser.add_argument('--fps', type=float, default=24., help='frame per second for video generation')
+        self.parser.add_argument('--zoom_lvl', default=0, type=int, help='amount of zoom during the feedback loop')
+        self.parser.add_argument('--pstart', default=1, type=int, help='starting epoch for progress videos')
+        self.parser.add_argument('--pstop', default=1, type=int, help='stopping epoch for progress videos')
 
         # for setting inputs
         self.parser.add_argument('--dataroot', type=str, default='./datasets/cityscapes/') 
