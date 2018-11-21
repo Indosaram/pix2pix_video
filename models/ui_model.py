@@ -219,7 +219,7 @@ class UIModel(BaseModel):
         fake_image = self.netG.forward(net_input)
 
         if fake_image.size()[0] == 1:
-            return fake_image.data[0]        
+            return fake_image.item()
         return fake_image.data
 
 
@@ -343,7 +343,7 @@ class UIModel(BaseModel):
         dict_list = [('fake_image', self.fake_image), ('mask', mask)]
 
         if getLabel: # only output label map if needed to save bandwidth
-            label = util.tensor2label(self.net_input.data[0], self.opt.label_nc)                    
+            label = util.tensor2label(self.net_input.item(), self.opt.label_nc)
             dict_list += [('label', label)]
 
         return OrderedDict(dict_list)

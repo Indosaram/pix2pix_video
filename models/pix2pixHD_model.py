@@ -127,7 +127,12 @@ class Pix2PixHDModel(BaseModel):
             inst_map = inst_map.data.cuda()
             edge_map = self.get_edges(inst_map)
             input_label = torch.cat((input_label, edge_map), dim=1)         
-        input_label = Variable(input_label, volatile=infer)
+
+        if infer:
+            with torch.no_grad():
+                input_label = Variable(input_label)
+        else:
+            input_label = Variable(input_label)
 
         # real images for training
         if real_image is not None:
@@ -240,7 +245,10 @@ class Pix2PixHDModel(BaseModel):
         return feat_map
 
     def encode_features(self, image, inst):
-        image = Variable(image.cuda(), volatile=True)
+
+        with torch.no_grad():
+            image = Variable(image.cuda())
+
         feat_num = self.opt.feat_num
         h, w = inst.size()[2], inst.size()[3]
         block_num = 32
@@ -256,7 +264,7 @@ class Pix2PixHDModel(BaseModel):
             idx = idx[num//2,:]
             val = np.zeros((1, feat_num+1))                        
             for k in range(feat_num):
-                val[0, k] = feat_map[idx[0], idx[1] + k, idx[2], idx[3]].data[0]            
+                val[0, k] = feat_map[idx[0], idx[1] + k, idx[2], idx[3]].item()
             val[0, feat_num] = float(num) / (h * w // block_num)
             feature[label] = np.append(feature[label], val, axis=0)
         return feature
