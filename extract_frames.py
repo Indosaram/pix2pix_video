@@ -32,7 +32,7 @@ os.mkdir(dataset_dir + "/test_frames")
 video_utils.extract_frames_from_video(
 	os.path.realpath(args.input_video),
 	dataset_dir + "/train_frames",
-	output_shape=(1280, 736)
+	output_shape=(args.width, args.height)
 )
 
 # copy first few frames to, for example, start the generated videos
