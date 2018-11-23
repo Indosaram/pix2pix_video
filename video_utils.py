@@ -1,31 +1,57 @@
 import util.util as util
+import torch
 import torchvision.transforms as transforms
-import cv2
 import subprocess
 import shlex
+
 from PIL import Image
 from PIL import ImageFont
 from PIL import ImageDraw
 
-
-def save_tensor(tensor, path, text="", text_xpos=985, text_ypos=30, text_color=(255,255,255)):
+def save_tensor(tensor, path, text="", text_pos="auto", text_color=(255,255,255)):
     """Saving a Torch image tensor into an image (with text)"""
     img_nda = util.tensor2im(tensor.data[0])
     img_pil = Image.fromarray(img_nda)
 
     if text != "":
+        if text_pos == "auto":
+            # top-right corner
+            text_xpos = img_pil.width - 28 * len(text)
+            text_ypos = 30
+        else:
+            text_xpos, text_ypos = text_pos
+
         draw = ImageDraw.Draw(img_pil)
         font = ImageFont.truetype("/usr/share/fonts/truetype/ubuntu/Ubuntu-B.ttf", 50)
         draw.text((text_xpos, text_ypos), text, text_color, font=font)
 
     img_pil.save(path)
 
-def zoom_in(input_tensor, w=1280, h=736, zoom_level=4):
-    """Zoom-in: Crop borders and resize a tensor"""
-    img_nda = util.tensor2im(input_tensor.data[0])
-    img_nda = img_nda[zoom_level:-zoom_level:,2*zoom_level:-2*zoom_level,:]
-    img_nda = cv2.resize(img_nda, (w,h), interpolation=cv2.INTER_LINEAR)
-    return transforms.functional.to_tensor(img_nda).reshape((1,3,h,w))
+
+def im2tensor(img_pil):
+    """Go from a PIL image (0..255 RGB) to a (-1..1) tensor"""
+    transform_list = [
+        # go from 0..255 to 0..1
+        transforms.ToTensor(),
+        # standard scaling: (t-0.5)/0.5 for all channels
+        transforms.Normalize((0.5, 0.5, 0.5),(0.5, 0.5, 0.5))
+    ]
+    transform = transforms.Compose(transform_list)
+    t = transform(img_pil)
+    return t.reshape((1, t.shape[0], t.shape[1], t.shape[2]))
+
+def zoom_in(input_tensor, zoom_level=4):
+    """Return a zoomed-in tensor"""
+    with torch.no_grad():
+        img_nda = util.tensor2im(input_tensor.data[0])
+        img_pil = Image.fromarray(img_nda)
+        img_pil = img_pil.transform(
+            img_pil.size,
+            Image.EXTENT,
+            data=(zoom_level, zoom_level, img_pil.width-zoom_level, img_pil.height-zoom_level),
+            resample=Image.BILINEAR
+        )
+        return im2tensor(img_pil)
 
 def next_frame_prediction(generator, input_tensor):
     """Just one forward pass through the generator"""
@@ -54,7 +80,9 @@ def extract_frames_from_video(video_path, frame_dir, output_shape=(1280, 736), f
     p.communicate()
 
 def video_from_frame_directory(frame_dir, video_path, frame_file_glob=r"frame-%05d.jpg", framerate=24, ffmpeg_verbosity=16, crop_to_720p=True):
-    """Build a mp4 video from a directory frames"""
+    """Build a mp4 video from a directory frames
+        note: crop_to_720p crops the top of 1280x736 images to get them to 1280x720
+    """
     command = """ffmpeg -v %d -framerate %d -i %s -ss 1 -q:v 2%s %s""" % (
         ffmpeg_verbosity,
         framerate,

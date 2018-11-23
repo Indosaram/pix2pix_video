@@ -44,8 +44,6 @@ for data in dataset:
     video_utils.save_tensor(t, 
         frame_dir + "/frame-%s.jpg" % str(frame_index).zfill(5),
         text="original video",
-        text_xpos=890,
-        text_ypos=30,
     )
     frame_index += 1
 current_frame = t
@@ -67,9 +65,7 @@ for epoch_index in range(opt.pstart, opt.pstop+1):
 
     # loading the generator model from checkpoint directory <opt.name>
     # with the weights from epoch <epoch_index>
-    # (add specific option opt.ngf=32 because my models are trained that way)
     opt.which_epoch=epoch_index
-    opt.ngf=32
     model = create_model(opt)
 
     for j in range(FRAMES_PER_EPOCH):

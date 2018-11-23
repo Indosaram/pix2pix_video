@@ -42,8 +42,6 @@ for data in dataset:
     video_utils.save_tensor(t, 
         frame_dir + "/frame-%s.jpg" % str(frame_index).zfill(5),
         text="original video",
-        text_xpos=890,
-        text_ypos=30,
     )
     frame_index += 1
 current_frame = t
@@ -77,7 +75,7 @@ video_utils.video_from_frame_directory(
     frame_dir, 
     video_path, 
     framerate=opt.fps, 
-    crop_to_720p=True
+    crop_to_720p=False
 )
 
 print("video ready:\n%s" % video_path)
