@@ -55,6 +55,8 @@ if opt.scheduled_sampling:
         raise Exception('(for now) in "scheduled sampling" mode, --batchSize has to be 1')
     if not opt.serial_batches:
         raise Exception('(for now) in "scheduled sampling" mode, the --serial_batches option is necessary')
+    if not opt.no_flip:
+        raise Exception('(for now) in "scheduled sampling" mode, the --no_flip option is necessary')
     latest_generated_frame = None
     recursion = 0
 
