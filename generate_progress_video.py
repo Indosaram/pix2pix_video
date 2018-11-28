@@ -8,6 +8,7 @@ from models.models import create_model
 from tqdm import tqdm
 import shutil
 import video_utils
+import image_transforms
 
 opt = TestOptions().parse(save=False)
 opt.nThreads = 1   # test code only supports nThreads = 1
@@ -70,7 +71,13 @@ for epoch_index in range(opt.pstart, opt.pstop+1):
 
     for j in range(FRAMES_PER_EPOCH):
         next_frame = video_utils.next_frame_prediction(model, current_frame)
-        next_frame = video_utils.zoom_in(next_frame) if opt.zoom_lvl!=0 else next_frame
+
+        if opt.zoom_lvl != 0:
+            next_frame = image_transforms.zoom_in(next_frame, zoom_level=opt.zoom_lvl)
+
+        if opt.heat_seeking_lvl != 0:
+            next_frame = image_transforms.heat_seeking(next_frame, translation_level=opt.heat_seeking_lvl, zoom_level=opt.heat_seeking_lvl)
+
         video_utils.save_tensor(
             next_frame, 
             frame_dir + "/frame-%s.jpg" % str(frame_index).zfill(5),
@@ -90,7 +97,7 @@ video_utils.video_from_frame_directory(
     frame_dir, 
     video_path, 
     framerate=opt.fps, 
-    crop_to_720p=True
+    crop_to_720p=False
 )
 
 print("video ready:\n%s" % video_path)

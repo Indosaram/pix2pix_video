@@ -36,6 +36,7 @@ class BaseOptions():
         self.parser.add_argument('--fps', type=float, default=24., help='frame per second for video generation')
         self.parser.add_argument('--start_from', type=str, default="video", help='seed choice: "video" to use the first frames of the dataset, "noise" to start from a ramdom noise frame, or an image filepath')
         self.parser.add_argument('--zoom_lvl', default=0, type=int, help='amount of zoom during the feedback loop')
+        self.parser.add_argument('--heat_seeking_lvl', default=0, type=int, help='amount of camera work to follow the action')
         self.parser.add_argument('--pstart', default=1, type=int, help='starting epoch for progress videos')
         self.parser.add_argument('--pstop', default=1, type=int, help='stopping epoch for progress videos')
 

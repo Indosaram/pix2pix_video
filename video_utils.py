@@ -40,18 +40,6 @@ def im2tensor(img_pil):
     t = transform(img_pil)
     return t.reshape((1, t.shape[0], t.shape[1], t.shape[2]))
 
-def zoom_in(input_tensor, zoom_level=4):
-    """Return a zoomed-in tensor"""
-    with torch.no_grad():
-        img_nda = util.tensor2im(input_tensor.data[0])
-        img_pil = Image.fromarray(img_nda)
-        img_pil = img_pil.transform(
-            img_pil.size,
-            Image.EXTENT,
-            data=(zoom_level, zoom_level, img_pil.width-zoom_level, img_pil.height-zoom_level),
-            resample=Image.BILINEAR
-        )
-        return im2tensor(img_pil)
 
 def next_frame_prediction(generator, input_tensor):
     """Just one forward pass through the generator"""

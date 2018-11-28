@@ -10,6 +10,7 @@ from PIL import Image
 import torch
 import shutil
 import video_utils
+import image_transforms
 
 opt = TestOptions().parse(save=False)
 opt.nThreads = 1   # test code only supports nThreads = 1
@@ -41,7 +42,8 @@ os.mkdir(frame_dir)
 frame_index = 1
 
 if opt.start_from == "noise":
-    t = torch.rand(1, 3, opt.loadSize, opt.fineSize)
+    # careful, default value is 1024x512
+    t = torch.rand(1, 3, opt.fineSize, opt.loadSize)
 
 elif opt.start_from  == "video":
     # use initial frames from the dataset
@@ -80,7 +82,13 @@ model = create_model(opt)
 
 for i in tqdm(range(opt.how_many)):
     next_frame = video_utils.next_frame_prediction(model, current_frame)
-    next_frame = video_utils.zoom_in(next_frame, zoom_level=opt.zoom_lvl) if opt.zoom_lvl!=0 else next_frame
+
+    if opt.zoom_lvl != 0:
+        next_frame = image_transforms.zoom_in(next_frame, zoom_level=opt.zoom_lvl)
+
+    if opt.heat_seeking_lvl != 0:
+        next_frame = image_transforms.heat_seeking(next_frame, translation_level=opt.heat_seeking_lvl, zoom_level=opt.heat_seeking_lvl)
+
     video_utils.save_tensor(
         next_frame, 
         frame_dir + "/frame-%s.jpg" % str(frame_index).zfill(5),
