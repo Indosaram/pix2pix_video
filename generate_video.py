@@ -80,7 +80,7 @@ model = create_model(opt)
 
 for i in tqdm(range(opt.how_many)):
     next_frame = video_utils.next_frame_prediction(model, current_frame)
-    next_frame = video_utils.zoom_in(next_frame) if opt.zoom_lvl!=0 else next_frame
+    next_frame = video_utils.zoom_in(next_frame, zoom_level=opt.zoom_lvl) if opt.zoom_lvl!=0 else next_frame
     video_utils.save_tensor(
         next_frame, 
         frame_dir + "/frame-%s.jpg" % str(frame_index).zfill(5),
