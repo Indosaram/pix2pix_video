@@ -6,6 +6,8 @@ from data.data_loader import CreateDataLoader
 from models.models import create_model
 
 from tqdm import tqdm
+from PIL import Image
+import torch
 import shutil
 import video_utils
 
@@ -37,13 +39,32 @@ if os.path.isdir(frame_dir):
 os.mkdir(frame_dir)
 
 frame_index = 1
-for data in dataset:
-    t = data['left_frame']
-    video_utils.save_tensor(t, 
-        frame_dir + "/frame-%s.jpg" % str(frame_index).zfill(5),
-        text="original video",
-    )
-    frame_index += 1
+
+if opt.start_from == "noise":
+    t = torch.rand(1, 3, opt.loadSize, opt.fineSize)
+
+elif opt.start_from  == "video":
+    # use initial frames from the dataset
+    for data in dataset:
+        t = data['left_frame']
+        video_utils.save_tensor(
+            t,
+            frame_dir + "/frame-%s.jpg" % str(frame_index).zfill(5),
+            text="original video",
+        )
+        frame_index += 1
+else:
+    # use specified image
+    filepath = opt.start_from
+    if os.path.isfile(filepath):
+        t = video_utils.im2tensor(Image.open(filepath))
+        for i in range(50):
+            video_utils.save_tensor(
+                t,
+                frame_dir + "/frame-%s.jpg" % str(frame_index).zfill(5),
+            )
+            frame_index += 1
+
 current_frame = t
 
 duration_s = opt.how_many / opt.fps
