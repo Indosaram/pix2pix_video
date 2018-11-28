@@ -17,7 +17,7 @@ class FrameDataset(BaseDataset):
         self.frame_count = len(self.frame_paths)
         self.dataset_size = self.frame_count - 1
 
-        print("FrameDataset intinialized from: %s" % self.dir_frames)
+        print("FrameDataset initialized from: %s" % self.dir_frames)
         print("contains %d frames, %d consecutive pairs" % (self.frame_count, self.dataset_size))
       
     def __getitem__(self, index):
