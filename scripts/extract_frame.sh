@@ -1,0 +1,1 @@
+python3 extract_frames.py -video ../fireworks.mp4 -name fire_dataset -p2pdir . -width 1280 -height 736 
