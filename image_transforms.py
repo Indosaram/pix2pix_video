@@ -41,6 +41,29 @@ def rotate(input_tensor, rotation_level=4):
         img_pil = img_pil.rotate(rotation_level, resample=Image.BILINEAR)
         return video_utils.im2tensor(img_pil)
 
+def concatenate(left_tensor, right_tensor):
+
+    left_nda = util.tensor2im(left_tensor.data[0])
+    left_pil = Image.fromarray(left_nda)
+
+    right_nda = util.tensor2im(right_tensor.data[0])
+    right_pil = Image.fromarray(right_nda)
+
+    width, height = left_pil.width*2, right_pil.height
+
+    new_im = Image.new('RGB', (width, height))
+    new_im.paste(left_pil, (0,0))
+    new_im.paste(right_pil, (left_pil.width,0))
+
+    return video_utils.im2tensor(new_im)
+
+def flip_left_right(input_tensor):
+    with torch.no_grad():
+        img_nda = util.tensor2im(input_tensor.data[0])
+        img_pil = Image.fromarray(img_nda)
+        img_pil = img_pil.transpose(Image.FLIP_LEFT_RIGHT)
+        return video_utils.im2tensor(img_pil)
+
 
 ## HEAT-SEEKING
 SMOOTHING_WINDOW_SIZE = 30
