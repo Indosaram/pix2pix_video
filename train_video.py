@@ -1,37 +1,38 @@
-### Copyright (C) 2017 NVIDIA Corporation. All rights reserved. 
+### Copyright (C) 2017 NVIDIA Corporation. All rights reserved.
 ### Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode).
+import os
+import shutil
 import time
 from collections import OrderedDict
-from options.train_options import TrainOptions
-from data.data_loader import CreateDataLoader
-from models.models import create_model
-import util.util as util
-from util.visualizer import Visualizer
+
+import numpy as np
 import torch
 from torch.autograd import Variable
 
-import os
-import numpy as np
-import shutil
+import util.util as util
 import video_utils
+from data.data_loader import CreateDataLoader
+from models.models import create_model
+from options.train_options import TrainOptions
+from util.visualizer import Visualizer
 
 opt = TrainOptions().parse()
-iter_path = os.path.join(opt.checkpoints_dir, opt.name, 'iter.txt')
+iter_path = os.path.join(opt.checkpoints_dir, opt.name, "iter.txt")
 if opt.continue_train:
     try:
-        start_epoch, epoch_iter = np.loadtxt(iter_path , delimiter=',', dtype=int)
+        start_epoch, epoch_iter = np.loadtxt(iter_path, delimiter=",", dtype=int)
     except:
         start_epoch, epoch_iter = 1, 0
-    print('Resuming from epoch %d at iteration %d' % (start_epoch, epoch_iter))        
-else:    
+    print("Resuming from epoch %d at iteration %d" % (start_epoch, epoch_iter))
+else:
     start_epoch, epoch_iter = 1, 0
 
 if opt.debug:
-    #opt.display_freq = 1
-    #opt.print_freq = 1
-    #opt.niter = 1
-    #opt.niter_decay = 0
-    #opt.max_dataset_size = 10
+    # opt.display_freq = 1
+    # opt.print_freq = 1
+    # opt.niter = 1
+    # opt.niter_decay = 0
+    # opt.max_dataset_size = 10
     pass
 
 # additional enforced options for video
@@ -45,27 +46,35 @@ opt.batchSize = 1
 
 # this debug directory will contain input/output frame pairs
 if opt.debug:
-    debug_dir = os.path.join(opt.checkpoints_dir, opt.name, 'debug')
+    debug_dir = os.path.join(opt.checkpoints_dir, opt.name, "debug")
     if os.path.isdir(debug_dir):
         shutil.rmtree(debug_dir)
     os.mkdir(debug_dir)
 
 if opt.scheduled_sampling:
     if opt.batchSize > 1:
-        raise Exception('(for now) in "scheduled sampling" mode, --batchSize has to be 1')
+        raise Exception(
+            '(for now) in "scheduled sampling" mode, --batchSize has to be 1'
+        )
     if not opt.serial_batches:
-        raise Exception('(for now) in "scheduled sampling" mode, the --serial_batches option is necessary')
+        raise Exception(
+            '(for now) in "scheduled sampling" mode, the --serial_batches option is necessary'
+        )
     if not opt.no_flip:
-        raise Exception('(for now) in "scheduled sampling" mode, the --no_flip option is necessary')
+        raise Exception(
+            '(for now) in "scheduled sampling" mode, the --no_flip option is necessary'
+        )
     latest_generated_frame = None
     recursion = 0
 
 opt.video_mode = True
-data_loader = CreateDataLoader(opt) #this will look for a "frame dataset" at the location you specified
+data_loader = CreateDataLoader(
+    opt
+)  # this will look for a "frame dataset" at the location you specified
 dataset = data_loader.load_data()
 dataset_size = len(data_loader)
-print('#training images = %d' % dataset_size)
-total_steps = (start_epoch-1) * dataset_size + epoch_iter
+print("#training images = %d" % dataset_size)
+total_steps = (start_epoch - 1) * dataset_size + epoch_iter
 model = create_model(opt)
 visualizer = Visualizer(opt)
 display_delta = total_steps % opt.display_freq
@@ -85,32 +94,43 @@ for epoch in range(start_epoch, opt.niter + opt.niter_decay + 1):
 
         ############## Forward Pass - frame t -> frame t+1 ######################
 
-        if opt.scheduled_sampling and (latest_generated_frame is not None) and np.random.randn(1) < opt.ss_recursion_prob:
+        if (
+            opt.scheduled_sampling
+            and (latest_generated_frame is not None)
+            and np.random.randn(1) < opt.ss_recursion_prob
+        ):
             left_frame = latest_generated_frame.detach()
             recursion += 1
         else:
-            left_frame = Variable(data['left_frame'])
+            left_frame = Variable(data["left_frame"])
             recursion = 0
 
-        right_frame = Variable(data['right_frame'])
+        right_frame = Variable(data["right_frame"])
 
         if opt.debug:
-            video_utils.save_tensor(left_frame, debug_dir + "/step-%d-left-r%d.jpg" % (total_steps, recursion))
-            video_utils.save_tensor(right_frame, debug_dir + "/step-%d-right.jpg" % total_steps)
+            video_utils.save_tensor(
+                left_frame,
+                debug_dir + "/step-%d-left-r%d.jpg" % (total_steps, recursion),
+            )
+            video_utils.save_tensor(
+                right_frame, debug_dir + "/step-%d-right.jpg" % total_steps
+            )
 
         losses, latest_generated_frame = model(
-            left_frame, None,
-            right_frame, None,
-            infer=opt.scheduled_sampling
+            left_frame, None, right_frame, None, infer=opt.scheduled_sampling
         )
 
         # sum per device losses
-        losses = [ torch.mean(x) if not isinstance(x, int) else x for x in losses ]
+        losses = [torch.mean(x) if not isinstance(x, int) else x for x in losses]
         loss_dict = dict(zip(model.module.loss_names, losses))
 
         # calculate final loss scalar
-        loss_D = (loss_dict['D_fake'] + loss_dict['D_real']) * 0.5
-        loss_G = loss_dict['G_GAN'] + loss_dict.get('G_GAN_Feat',0) + loss_dict.get('G_VGG',0)
+        loss_D = (loss_dict["D_fake"] + loss_dict["D_real"]) * 0.5
+        loss_G = (
+            loss_dict["G_GAN"]
+            + loss_dict.get("G_GAN_Feat", 0)
+            + loss_dict.get("G_VGG", 0)
+        )
 
         ############### Backward Pass - frame1->frame2 ####################
         # update generator weights
@@ -123,36 +143,46 @@ for epoch in range(start_epoch, opt.niter + opt.niter_decay + 1):
         loss_D.backward()
         model.module.optimizer_D.step()
 
-        #call(["nvidia-smi", "--format=csv", "--query-gpu=memory.used,memory.free"]) 
+        # call(["nvidia-smi", "--format=csv", "--query-gpu=memory.used,memory.free"])
 
         ############## Display results and errors ##########
         ### print out errors
         if total_steps % opt.print_freq == print_delta:
-            errors = {k: v.item() if not isinstance(v, int) else v for k, v in loss_dict.items()}
+            errors = {
+                k: v.item() if not isinstance(v, int) else v
+                for k, v in loss_dict.items()
+            }
             t = (time.time() - iter_start_time) / opt.batchSize
             visualizer.print_current_errors(epoch, epoch_iter, errors, t)
             visualizer.plot_current_errors(errors, total_steps)
 
         ### save latest model
         if total_steps % opt.save_latest_freq == save_delta:
-            print('saving the latest model (epoch %d, total_steps %d)' % (epoch, total_steps))
-            model.module.save('latest')            
-            np.savetxt(iter_path, (epoch, epoch_iter), delimiter=',', fmt='%d')
+            print(
+                "saving the latest model (epoch %d, total_steps %d)"
+                % (epoch, total_steps)
+            )
+            model.module.save("latest")
+            np.savetxt(iter_path, (epoch, epoch_iter), delimiter=",", fmt="%d")
 
         if epoch_iter >= dataset_size:
             break
-       
-    # end of epoch 
+
+    # end of epoch
     iter_end_time = time.time()
-    print('End of epoch %d / %d \t Time Taken: %d sec' %
-          (epoch, opt.niter + opt.niter_decay, time.time() - epoch_start_time))
+    print(
+        "End of epoch %d / %d \t Time Taken: %d sec"
+        % (epoch, opt.niter + opt.niter_decay, time.time() - epoch_start_time)
+    )
 
     ### save model for this epoch
     if epoch % opt.save_epoch_freq == 0:
-        print('saving the model at the end of epoch %d, iters %d' % (epoch, total_steps))        
-        model.module.save('latest')
+        print(
+            "saving the model at the end of epoch %d, iters %d" % (epoch, total_steps)
+        )
+        model.module.save("latest")
         model.module.save(epoch)
-        np.savetxt(iter_path, (epoch+1, 0), delimiter=',', fmt='%d')
+        np.savetxt(iter_path, (epoch + 1, 0), delimiter=",", fmt="%d")
 
     ### instead of only training the local enhancer, train the entire network after certain iterations
     if (opt.niter_fix_global != 0) and (epoch == opt.niter_fix_global):

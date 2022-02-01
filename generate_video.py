@@ -1,19 +1,20 @@
-### Copyright (C) 2017 NVIDIA Corporation. All rights reserved. 
+### Copyright (C) 2017 NVIDIA Corporation. All rights reserved.
 ### Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode).
 import os
-from options.test_options import TestOptions
+import shutil
+
+import torch
+from PIL import Image
+from tqdm import tqdm
+
+import image_transforms
+import video_utils
 from data.data_loader import CreateDataLoader
 from models.models import create_model
-
-from tqdm import tqdm
-from PIL import Image
-import torch
-import shutil
-import video_utils
-import image_transforms
+from options.test_options import TestOptions
 
 opt = TestOptions().parse(save=False)
-opt.nThreads = 1   # test code only supports nThreads = 1
+opt.nThreads = 1  # test code only supports nThreads = 1
 opt.batchSize = 1  # test code only supports batchSize = 1
 opt.serial_batches = True  # no shuffle
 opt.no_flip = True  # no flip
@@ -29,31 +30,31 @@ data_loader = CreateDataLoader(opt)
 dataset = data_loader.load_data()
 
 # this directory will contain the generated videos
-output_dir = os.path.join(opt.checkpoints_dir, opt.name, 'output')
+output_dir = os.path.join(opt.checkpoints_dir, opt.name, "output")
 if not os.path.isdir(output_dir):
     os.mkdir(output_dir)
 
-# this directory will contain the frames to build the video
-frame_dir = os.path.join(opt.checkpoints_dir, opt.name, 'frames')
+# this directory will contain the frames to build the video./checkpoints/fire_project/output/
+frame_dir = os.path.join(opt.checkpoints_dir, opt.name, "frames")
 if os.path.isdir(frame_dir):
     shutil.rmtree(frame_dir)
 os.mkdir(frame_dir)
 
-frame_index = 1
+frame_index = opt.start_frame
 
 if opt.start_from == "noise":
     # careful, default value is 1024x512
     t = torch.rand(1, 3, opt.fineSize, opt.loadSize)
 
-elif opt.start_from  == "video":
+elif opt.start_from == "video":
     # use initial frames from the dataset
     for data in dataset:
-        t = data['left_frame']
-        video_utils.save_tensor(
-            t,
-            frame_dir + "/frame-%s.jpg" % str(frame_index).zfill(5),
-            text="original video",
-        )
+        t = data["left_frame"]
+        # video_utils.save_tensor(
+        #     t,
+        #     frame_dir + "/frame-%s.jpg" % str(frame_index).zfill(5),
+        #     text="original video",
+        # )
         frame_index += 1
 else:
     # use specified image
@@ -69,14 +70,19 @@ else:
 
 current_frame = t
 
+
 duration_s = opt.how_many / opt.fps
-video_id = "epoch-%s_%s_%.1f-s_%.1f-fps%s" % (
+video_id = "start_frame-%d_epoch-%s_%s_%.1f-s_%.1f-fps%s" % (
+    opt.start_frame,
     str(opt.which_epoch),
     opt.name,
     duration_s,
     opt.fps,
-    "_with-%d-zoom" % opt.zoom_lvl if opt.zoom_lvl!=0 else ""
+    "_with-%d-zoom" % opt.zoom_lvl if opt.zoom_lvl != 0 else "",
 )
+
+# # Clean up directory
+# os.remove(f"{frame_dir}/*")
 
 model = create_model(opt)
 
@@ -87,25 +93,36 @@ for i in tqdm(range(opt.how_many)):
         next_frame = image_transforms.zoom_in(next_frame, zoom_level=opt.zoom_lvl)
 
     if opt.heat_seeking_lvl != 0:
-        next_frame = image_transforms.heat_seeking(next_frame, translation_level=opt.heat_seeking_lvl, zoom_level=opt.heat_seeking_lvl)
+        next_frame = image_transforms.heat_seeking(
+            next_frame,
+            translation_level=opt.heat_seeking_lvl,
+            zoom_level=opt.heat_seeking_lvl,
+        )
 
     video_utils.save_tensor(
-        next_frame, 
+        next_frame,
         frame_dir + "/frame-%s.jpg" % str(frame_index).zfill(5),
     )
     current_frame = next_frame
-    frame_index+=1
+    frame_index += 1
 
 video_path = output_dir + "/" + video_id + ".mp4"
 while os.path.isfile(video_path):
     video_path = video_path[:-4] + "-.mp4"
 
+
+import re
+
+first_frame = sorted(os.listdir(frame_dir))[0]
+start_frame = int(re.search("frame-(\d+).jpg", first_frame).group(1))
+
 video_utils.video_from_frame_directory(
-    frame_dir, 
-    video_path, 
-    framerate=opt.fps, 
+    start_frame,
+    frame_dir,
+    video_path,
+    framerate=opt.fps,
     crop_to_720p=True,
-    reverse=False
+    reverse=False,
 )
 
 print("video ready:\n%s" % video_path)
